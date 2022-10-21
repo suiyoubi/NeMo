@@ -165,6 +165,8 @@ examples/*/wandb
 examples/*/data
 wandb
 dump.py
+output/*
+outputs/*
 
 docs/sources/source/test_build/
 
