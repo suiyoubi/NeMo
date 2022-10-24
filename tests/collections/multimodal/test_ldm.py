@@ -8,7 +8,7 @@ from nemo.collections.multimodal.models.configs.ldm_config import (
     LDMUnetConfig,
     LDMEncoderConfig,
 )
-from nemo.collections.multimodal.models.diffusion.ddpm import DDPM, LDM, LatentDiffusion
+from nemo.collections.multimodal.models.diffusion.ddpm import DDPM, LatentDiffusion
 from nemo.collections.multimodal.modules.diffusionmodules.openaimodel import UNetModel
 from nemo.collections.multimodal.models.autoencoder import AutoencoderKL
 
