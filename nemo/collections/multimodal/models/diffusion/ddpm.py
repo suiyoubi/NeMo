@@ -6,6 +6,9 @@ https://github.com/CompVis/taming-transformers
 -- merci
 """
 
+from nemo.collections.multimodal.models.configs.ldm_config import DDPMDiffusionModelConfig, LatentDiffusionModelConfig
+from nemo.collections.multimodal.models.diffusion_model import DiffusionModel
+from nemo.core.classes.common import Serialization
 import torch
 import torch.nn as nn
 import numpy as np
@@ -18,7 +21,7 @@ from tqdm import tqdm
 from torchvision.utils import make_grid
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
-from nemo.collections.multimodal.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params, instantiate_from_config
+from nemo.collections.multimodal.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params
 from nemo.collections.multimodal.modules.ema import LitEma
 from nemo.collections.multimodal.modules.distributions.distributions import normal_kl, DiagonalGaussianDistribution
 from nemo.collections.multimodal.models.autoencoder import VQModelInterface, IdentityFirstStage, AutoencoderKL
@@ -40,79 +43,61 @@ def disabled_train(self, mode=True):
 def uniform_on_device(r1, r2, shape, device):
     return (r1 - r2) * torch.rand(*shape, device=device) + r2
 
-
-class DDPM(pl.LightningModule):
+class DDPM(DiffusionModel):
     # classic DDPM with Gaussian diffusion, in image space
-    def __init__(self,
-                 unet_config,
-                 timesteps=1000,
-                 beta_schedule="linear",
-                 loss_type="l2",
-                 ckpt_path=None,
-                 ignore_keys=[],
-                 load_only_unet=False,
-                 monitor="val/loss",
-                 use_ema=True,
-                 first_stage_key="image",
-                 image_size=256,
-                 channels=3,
-                 log_every_t=100,
-                 clip_denoised=True,
-                 linear_start=1e-4,
-                 linear_end=2e-2,
-                 cosine_s=8e-3,
-                 given_betas=None,
-                 original_elbo_weight=0.,
-                 v_posterior=0.,  # weight for choosing posterior variance as sigma = (1-v) * beta_tilde + v * beta
-                 l_simple_weight=1.,
-                 conditioning_key=None,
-                 parameterization="eps",  # all assuming fixed variance schedules
-                 scheduler_config=None,
-                 use_positional_encodings=False,
-                 learn_logvar=False,
-                 logvar_init=0.,
-                 ):
-        super().__init__()
-        assert parameterization in ["eps", "x0"], 'currently only supporting "eps" and "x0"'
-        self.parameterization = parameterization
+    def apply_model(self, x_t, t, c):
+        return None
+    def get_conditioning(self, c):
+        return c
+    def list_available_models(self):
+        return None
+    def setup_training_data(self):
+        return None
+    def setup_validation_data(self):
+        return None
+    def __init__(self, cfg: DDPMDiffusionModelConfig, trainer=None):
+        super().__init__(cfg=cfg, trainer=trainer)
+    
+        assert cfg.parameterization in ["eps", "x0"], 'currently only supporting "eps" and "x0"'
+        self.parameterization = cfg.parameterization
         print(f"{self.__class__.__name__}: Running in {self.parameterization}-prediction mode")
         self.cond_stage_model = None
-        self.clip_denoised = clip_denoised
-        self.log_every_t = log_every_t
-        self.first_stage_key = first_stage_key
-        self.image_size = image_size  # try conv?
-        self.channels = channels
-        self.use_positional_encodings = use_positional_encodings
-        self.model = DiffusionWrapper(unet_config, conditioning_key)
+        self.clip_denoised = cfg.clip_denoised
+        self.log_every_t = cfg.log_every_t
+        self.first_stage_key = cfg.first_stage_key
+        self.image_size = cfg.image_size  # try conv?
+        self.channels = cfg.channels
+        self.use_positional_encodings = cfg.use_positional_encodings
+        self.model = DiffusionWrapper(cfg.unet_config, cfg.conditioning_key)
         count_params(self.model, verbose=True)
-        self.use_ema = use_ema
+        self.use_ema = cfg.use_ema
         if self.use_ema:
             self.model_ema = LitEma(self.model)
             print(f"Keeping EMAs of {len(list(self.model_ema.buffers()))}.")
 
-        self.use_scheduler = scheduler_config is not None
+        self.use_scheduler = cfg.scheduler_config is not None
         if self.use_scheduler:
-            self.scheduler_config = scheduler_config
+            self.scheduler_config = cfg.scheduler_config
 
-        self.v_posterior = v_posterior
-        self.original_elbo_weight = original_elbo_weight
-        self.l_simple_weight = l_simple_weight
+        self.v_posterior = cfg.v_posterior
+        self.original_elbo_weight = cfg.original_elbo_weight
+        self.l_simple_weight = cfg.l_simple_weight
 
-        if monitor is not None:
-            self.monitor = monitor
-        if ckpt_path is not None:
-            self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys, only_model=load_only_unet)
+        if cfg.monitor is not None:
+            self.monitor = cfg.monitor
+        if cfg.ckpt_path is not None:
+            self.init_from_ckpt(cfg.ckpt_path, ignore_keys=cfg.ignore_keys, only_model=cfg.load_only_unet)
 
-        self.register_schedule(given_betas=given_betas, beta_schedule=beta_schedule, timesteps=timesteps,
-                               linear_start=linear_start, linear_end=linear_end, cosine_s=cosine_s)
+        self.register_schedule(given_betas=cfg.given_betas, beta_schedule=cfg.beta_schedule, timesteps=cfg.timesteps,
+                               linear_start=cfg.linear_start, linear_end=cfg.linear_end, cosine_s=cfg.cosine_s)
 
-        self.loss_type = loss_type
+        self.loss_type = cfg.loss_type
 
-        self.learn_logvar = learn_logvar
-        self.logvar = torch.full(fill_value=logvar_init, size=(self.num_timesteps,))
+        self.learn_logvar = cfg.learn_logvar
+        self.logvar = torch.full(fill_value=cfg.logvar_init, size=(self.num_timesteps,))
         if self.learn_logvar:
             self.logvar = nn.Parameter(self.logvar, requires_grad=True)
-
+        self.learning_rate = cfg.learning_rate
 
     def register_schedule(self, given_betas=None, beta_schedule="linear", timesteps=1000,
                           linear_start=1e-4, linear_end=2e-2, cosine_s=8e-3):
@@ -423,43 +408,35 @@ class DDPM(pl.LightningModule):
 
 class LatentDiffusion(DDPM):
     """main class"""
-    def __init__(self,
-                 first_stage_config,
-                 cond_stage_config,
-                 num_timesteps_cond=None,
-                 cond_stage_key="image",
-                 cond_stage_trainable=False,
-                 concat_mode=True,
-                 cond_stage_forward=None,
-                 conditioning_key=None,
-                 scale_factor=1.0,
-                 scale_by_std=False,
-                 *args, **kwargs):
-        self.num_timesteps_cond = default(num_timesteps_cond, 1)
-        self.scale_by_std = scale_by_std
-        assert self.num_timesteps_cond <= kwargs['timesteps']
+    def __init__(self, cfg: LatentDiffusionModelConfig, trainer=None):
+        self.num_timesteps_cond = default(cfg.num_timesteps_cond, 1)
+        self.scale_by_std = cfg.scale_by_std
+        assert self.num_timesteps_cond <= cfg.timesteps
         # for backwards compatibility after implementation of DiffusionWrapper
-        if conditioning_key is None:
-            conditioning_key = 'concat' if concat_mode else 'crossattn'
-        if cond_stage_config == '__is_unconditional__':
+        if cfg.conditioning_key is None:
+            conditioning_key = 'concat' if cfg.concat_mode else 'crossattn'
+        else:
+            conditioning_key = cfg.conditioning_key
+        if cfg.cond_stage_config == '__is_unconditional__':
             conditioning_key = None
-        ckpt_path = kwargs.pop("ckpt_path", None)
-        ignore_keys = kwargs.pop("ignore_keys", [])
-        super().__init__(conditioning_key=conditioning_key, *args, **kwargs)
-        self.concat_mode = concat_mode
-        self.cond_stage_trainable = cond_stage_trainable
-        self.cond_stage_key = cond_stage_key
+        ckpt_path = cfg.ckpt_path
+        ignore_keys = cfg.ignore_keys
+        cfg.conditioning_key = conditioning_key
+        super().__init__(cfg=cfg, trainer=trainer)
+        self.concat_mode = cfg.concat_mode
+        self.cond_stage_trainable = cfg.cond_stage_trainable
+        self.cond_stage_key = cfg.cond_stage_key
         try:
-            self.num_downs = len(first_stage_config.params.ddconfig.ch_mult) - 1
+            self.num_downs = len(cfg.first_stage_config.params.ddconfig.ch_mult) - 1
         except:
             self.num_downs = 0
-        if not scale_by_std:
-            self.scale_factor = scale_factor
+        if not cfg.scale_by_std:
+            self.scale_factor = cfg.scale_factor
         else:
-            self.register_buffer('scale_factor', torch.tensor(scale_factor))
-        self.instantiate_first_stage(first_stage_config)
-        self.instantiate_cond_stage(cond_stage_config)
-        self.cond_stage_forward = cond_stage_forward
+            self.register_buffer('scale_factor', torch.tensor(cfg.scale_factor))
+        self.instantiate_first_stage(cfg.first_stage_config)
+        self.instantiate_cond_stage(cfg.cond_stage_config)
+        self.cond_stage_forward = cfg.cond_stage_forward
         self.clip_denoised = False
         self.bbox_tokenizer = None  
 
@@ -500,7 +477,7 @@ class LatentDiffusion(DDPM):
             self.make_cond_schedule()
 
     def instantiate_first_stage(self, config):
-        model = instantiate_from_config(config)
+        model = LatentDiffusion.from_config_dict(config)
         self.first_stage_model = model.eval()
         self.first_stage_model.train = disabled_train
         for param in self.first_stage_model.parameters():
@@ -516,7 +493,7 @@ class LatentDiffusion(DDPM):
                 self.cond_stage_model = None
                 # self.be_unconditional = True
             else:
-                model = instantiate_from_config(config)
+                model = LatentDiffusion.from_config_dict(config)
                 self.cond_stage_model = model.eval()
                 self.cond_stage_model.train = disabled_train
                 for param in self.cond_stage_model.parameters():
@@ -524,7 +501,7 @@ class LatentDiffusion(DDPM):
         else:
             assert config != '__is_first_stage__'
             assert config != '__is_unconditional__'
-            model = instantiate_from_config(config)
+            model = LatentDiffusion.from_config_dict(config)
             self.cond_stage_model = model
 
     def _get_denoise_row_from_list(self, samples, desc='', force_no_decoder_quantization=False):
@@ -1369,8 +1346,7 @@ class LatentDiffusion(DDPM):
             params.append(self.logvar)
         opt = torch.optim.AdamW(params, lr=lr)
         if self.use_scheduler:
-            assert 'target' in self.scheduler_config
-            scheduler = instantiate_from_config(self.scheduler_config)
+            scheduler = LatentDiffusion.from_config_dict(self.scheduler_config)
 
             print("Setting up LambdaLR scheduler...")
             scheduler = [
@@ -1392,10 +1368,10 @@ class LatentDiffusion(DDPM):
         return x
 
 
-class DiffusionWrapper(pl.LightningModule):
+class DiffusionWrapper(pl.LightningModule, Serialization):
     def __init__(self, diff_model_config, conditioning_key):
         super().__init__()
-        self.diffusion_model = instantiate_from_config(diff_model_config)
+        self.diffusion_model = DiffusionWrapper.from_config_dict(diff_model_config)
         self.conditioning_key = conditioning_key
         assert self.conditioning_key in [None, 'concat', 'crossattn', 'hybrid', 'adm']
 

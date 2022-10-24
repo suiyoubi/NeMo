@@ -285,8 +285,8 @@ class VQModelInterface(VQModel):
 class AutoencoderKL(pl.LightningModule):
     def __init__(self,
                  ddconfig,
-                 lossconfig,
                  embed_dim,
+                 lossconfig = None, # TODO make it configurable
                  ckpt_path=None,
                  ignore_keys=[],
                  image_key="image",
@@ -297,7 +297,7 @@ class AutoencoderKL(pl.LightningModule):
         self.image_key = image_key
         self.encoder = Encoder(**ddconfig)
         self.decoder = Decoder(**ddconfig)
-        self.loss = instantiate_from_config(lossconfig)
+        self.loss = torch.nn.Identity() # instantiate_from_config(lossconfig)
         assert ddconfig["double_z"]
         self.quant_conv = torch.nn.Conv2d(2*ddconfig["z_channels"], 2*embed_dim, 1)
         self.post_quant_conv = torch.nn.Conv2d(embed_dim, ddconfig["z_channels"], 1)

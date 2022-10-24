@@ -1,9 +1,10 @@
 from io import UnsupportedOperation
 from typing import Callable, Dict, List, Optional, Union
+from nemo.collections.multimodal.models.configs.ldm_config import LatentDiffusionModelConfig
 from nemo.collections.multimodal.models.diffusion.ddim import DDIMSampler
+from nemo.collections.multimodal.models.diffusion.ddpm import LatentDiffusion
 from nemo.collections.multimodal.models.diffusion.plms import PLMSSampler
 from omegaconf import OmegaConf
-from nemo.collections.multimodal.util import instantiate_from_config
 from PIL import Image
 import torch
 import time
@@ -68,8 +69,7 @@ class StableDiffusionPipeline(DiffusionPipeline):
     def from_pretrained(cls, ckpt, sampler_type='DDIM'):
         
         # TODO: Ideally, we should have mapping between ckpt and config.
-        config_str = 'examples/multimodal/configs/v1-inference.yaml'
-        config = OmegaConf.load(config_str)
+        config = LatentDiffusionModelConfig()
         model = StableDiffusionPipeline.load_model_from_config(config, f"{ckpt}")
         if sampler_type == 'DDIM':
             sampler = DDIMSampler(model)
@@ -86,7 +86,7 @@ class StableDiffusionPipeline(DiffusionPipeline):
         if "global_step" in pl_sd:
             print(f"Global Step: {pl_sd['global_step']}")
         sd = pl_sd["state_dict"]
-        model = instantiate_from_config(config.model)
+        model = LatentDiffusion.from_config_dict(config)
         print('finished')
         m, u = model.load_state_dict(sd, strict=False)
         if len(m) > 0 and verbose:
