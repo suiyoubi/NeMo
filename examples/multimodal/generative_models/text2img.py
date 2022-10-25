@@ -13,8 +13,8 @@ from pytorch_lightning import seed_everything
 from torch import autocast
 from contextlib import contextmanager, nullcontext
 
-from nemo.collections.multimodal.util import instantiate_from_config
-from nemo.collections.multimodal.models.diffusion.ddim import DDIMSampler
+from nemo.collections.multimodal.parts.util import instantiate_from_config
+from nemo.collections.multimodal.models.samplers.ddim import DDIMSampler
 # from ldm.models.diffusion.plms import PLMSSampler
 from transformers import AutoFeatureExtractor
 

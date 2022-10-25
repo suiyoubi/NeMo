@@ -8,9 +8,9 @@ from nemo.collections.multimodal.models.configs.ldm_config import (
     LDMUnetConfig,
     LDMEncoderConfig,
 )
-from nemo.collections.multimodal.models.diffusion.ddpm import DDPM, LatentDiffusion
+from nemo.collections.multimodal.models.ldm.ddpm import DDPM, LatentDiffusion
 from nemo.collections.multimodal.modules.diffusionmodules.openaimodel import UNetModel
-from nemo.collections.multimodal.models.autoencoder import AutoencoderKL
+from nemo.collections.multimodal.models.ldm.autoencoder import AutoencoderKL
 
 @pytest.mark.unit
 def test_ddpm_constructor():

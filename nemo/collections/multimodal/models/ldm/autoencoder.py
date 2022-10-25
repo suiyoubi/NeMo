@@ -8,7 +8,7 @@ from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
 from nemo.collections.multimodal.modules.diffusionmodules.model import Encoder, Decoder
 from nemo.collections.multimodal.modules.distributions.distributions import DiagonalGaussianDistribution
 
-from nemo.collections.multimodal.util import instantiate_from_config
+from nemo.collections.multimodal.parts.util import instantiate_from_config
 
 
 class VQModel(pl.LightningModule):

@@ -21,7 +21,7 @@ class LDMUnetConfig:
 
 @dataclass
 class SchedulerConfig:
-    cls: Optional[str] = 'nemo.collections.multimodal.lr_scheduler.LambdaLinearScheduler'
+    cls: Optional[str] = 'nemo.collections.multimodal.parts.lr_scheduler.LambdaLinearScheduler'
     warm_up_steps: Optional[List[int]] = field(default_factory=lambda: [10000])
     cycle_lengths: Optional[List[int]] = field(default_factory=lambda: [10000000000000]) # incredibly large number to prevent corner cases
     f_start: Optional[List[float]] = field(default_factory=lambda: [1.e-6])
@@ -51,7 +51,7 @@ class LDMEncoderConfig:
 
 @dataclass
 class LDMFirstStageConfig: # Autoencoder
-    cls: Optional[str] = 'nemo.collections.multimodal.models.autoencoder.AutoencoderKL'
+    cls: Optional[str] = 'nemo.collections.multimodal.models.ldm.autoencoder.AutoencoderKL'
     embed_dim: Optional[int] = 4
     monitor: Optional[str] = 'val/rec_loss'
     ddconfig: Optional[LDMEncoderConfig] = LDMEncoderConfig()

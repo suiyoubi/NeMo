@@ -1,9 +1,9 @@
 from io import UnsupportedOperation
 from typing import Callable, Dict, List, Optional, Union
 from nemo.collections.multimodal.models.configs.ldm_config import LatentDiffusionModelConfig
-from nemo.collections.multimodal.models.diffusion.ddim import DDIMSampler
-from nemo.collections.multimodal.models.diffusion.ddpm import LatentDiffusion
-from nemo.collections.multimodal.models.diffusion.plms import PLMSSampler
+from nemo.collections.multimodal.models.samplers.ddim import DDIMSampler
+from nemo.collections.multimodal.models.ldm.ddpm import LatentDiffusion
+from nemo.collections.multimodal.models.samplers.plms import PLMSSampler
 from omegaconf import OmegaConf
 from PIL import Image
 import torch

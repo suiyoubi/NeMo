@@ -21,12 +21,12 @@ from tqdm import tqdm
 from torchvision.utils import make_grid
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
-from nemo.collections.multimodal.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params
+from nemo.collections.multimodal.parts.util import log_txt_as_img, exists, default, ismap, isimage, mean_flat, count_params
 from nemo.collections.multimodal.modules.ema import LitEma
 from nemo.collections.multimodal.modules.distributions.distributions import normal_kl, DiagonalGaussianDistribution
-from nemo.collections.multimodal.models.autoencoder import VQModelInterface, IdentityFirstStage, AutoencoderKL
+from nemo.collections.multimodal.models.ldm.autoencoder import VQModelInterface, IdentityFirstStage, AutoencoderKL
 from nemo.collections.multimodal.modules.diffusionmodules.util import make_beta_schedule, extract_into_tensor, noise_like
-from nemo.collections.multimodal.models.diffusion.ddim import DDIMSampler
+from nemo.collections.multimodal.models.samplers.ddim import DDIMSampler
 
 
 __conditioning_keys__ = {'concat': 'c_concat',

@@ -6,7 +6,7 @@ from einops import rearrange, repeat
 from transformers import CLIPTokenizer, CLIPTextModel
 import kornia
 
-from nemo.collections.multimodal.modules.x_transformer import Encoder, TransformerWrapper  # TODO: can we directly rely on lucidrains code and simply add this as a reuirement? --> test
+from nemo.collections.multimodal.modules.encoders.x_transformer import Encoder, TransformerWrapper  # TODO: can we directly rely on lucidrains code and simply add this as a reuirement? --> test
 
 
 class AbstractEncoder(nn.Module):

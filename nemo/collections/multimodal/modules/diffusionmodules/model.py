@@ -5,7 +5,7 @@ import torch.nn as nn
 import numpy as np
 from einops import rearrange
 
-from nemo.collections.multimodal.util import instantiate_from_config
+from nemo.collections.multimodal.parts.util import instantiate_from_config
 from nemo.collections.multimodal.modules.attention import LinearAttention
 
 
